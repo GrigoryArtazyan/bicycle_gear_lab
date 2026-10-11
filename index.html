@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>2x12 Gear Lab</title>
+<meta name="description" content="Watch chain line on a 2x12 road drivetrain, then ride a short course and get scored on cadence and cross-chaining.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231d4ea2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M16 4v4M16 24v4M4 16h4M24 16h4' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<style>
+/* Layout: setup strip, then Learn (chain line from above + animated side view, readout, 24-gear ladder) and Ride (scrolling course, cadence meter, shifters). */
+:root{
+  --bg:#eceff1; --panel:#f8fafb; --ink:#13202a; --muted:#566874; --line:#c9d3da;
+  --accent:#1d4ea2; --accent-ink:#ffffff;
+  --good:#1b8f4e; --warn:#b86e00; --bad:#cf3a2e; --steel:#3f7fae;
+  --sky:#e3eaee; --ground:#c4d0d7;
+  --f-display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1418; --panel:#162027; --ink:#e6edf1; --muted:#8ea0ac; --line:#2a3944;
+    --accent:#6ba3ff; --accent-ink:#0b1420;
+    --good:#46c37b; --warn:#f0b440; --bad:#ff6a5e; --steel:#5d9bc7;
+    --sky:#101b22; --ground:#22323c; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1418; --panel:#162027; --ink:#e6edf1; --muted:#8ea0ac; --line:#2a3944;
+  --accent:#6ba3ff; --accent-ink:#0b1420;
+  --good:#46c37b; --warn:#f0b440; --bad:#ff6a5e; --steel:#5d9bc7;
+  --sky:#101b22; --ground:#22323c; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);padding-inline:16px;padding-block:22px 56px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{font:700 clamp(36px,7vw,60px)/.95 var(--f-display);text-transform:uppercase;letter-spacing:.01em;margin:0;text-wrap:balance}
+.lede{color:var(--muted);max-width:62ch;margin:8px 0 0}
+.strip{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+label.f{display:flex;flex-direction:column;gap:4px;font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+select{font:500 14px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-height:38px}
+select:focus-visible,input:focus-visible,.btn:focus-visible,.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{font-size:12.5px;color:var(--muted);flex:1 1 220px;min-width:0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{font:600 22px var(--f-display);text-transform:uppercase;letter-spacing:.06em;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:8px 16px;cursor:pointer;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+.grid2{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px}
+@media (max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
+.card h2{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.cap{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--f-mono)}
+.zone-good{--c:var(--good)} .zone-warn{--c:var(--warn)} .zone-bad{--c:var(--bad)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:8px}
+.row label{font:500 12px var(--f-mono);color:var(--muted);display:flex;align-items:center;gap:8px}
+input[type=range]{accent-color:var(--accent);width:160px}
+.readout{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 22px;align-items:center}
+@media (max-width:620px){.readout{grid-template-columns:minmax(0,1fr)}}
+.gearbig{font:700 clamp(56px,10vw,84px)/.9 var(--f-display);letter-spacing:.01em;font-variant-numeric:tabular-nums;color:var(--c,var(--ink))}
+.gearbig small{display:block;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px 14px}
+.stat span{display:block;font:500 10.5px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.stat b{font:600 26px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.stat i{font:normal 500 12px var(--f-mono);color:var(--muted);margin-left:3px}
+.banner{border-left:4px solid var(--c,var(--line));background:color-mix(in srgb,var(--c,var(--muted)) 12%,var(--panel));padding:9px 12px;border-radius:0 5px 5px 0;font-size:14px}
+.banner b{font-weight:600}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.btn{min-height:46px;padding:8px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:5px;font:600 14px var(--f-body);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left}
+.btn:hover{border-color:var(--accent)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);justify-content:center}
+.btn kbd{font:500 11px var(--f-mono);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:1px 6px}
+.btn.primary kbd{color:inherit;border-color:currentColor;opacity:.7}
+.ctlgroup{display:flex;flex-direction:column;gap:6px}
+.ctlgroup>h3{margin:0;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ctlgroup>div{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.scroll{overflow-x:auto}
+.scroll svg{min-width:560px}
+ul.rules{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px 22px}
+ul.rules li{min-width:0;font-size:14px}
+ul.rules b{display:block;font:600 19px var(--f-display);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.foot{font-size:12px;color:var(--muted);max-width:80ch}
+.stage{position:relative;padding:0;overflow:hidden}
+#cv{width:100%;height:250px;display:block;background:var(--sky)}
+@media (max-width:560px){#cv{height:210px}}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--bg) 80%,transparent)}
+.overlay .box{max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.overlay h3{margin:0;font:700 32px/1 var(--f-display);text-transform:uppercase}
+.overlay p{margin:0;font-size:14px}
+.overlay .btn{align-self:flex-start}
+.hud{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px 14px}
+.meter{position:relative;height:30px;border:1px solid var(--line);border-radius:5px;background:var(--panel);overflow:hidden}
+.meter .ok{position:absolute;top:0;bottom:0;left:33.3%;width:38.9%;background:color-mix(in srgb,var(--good) 18%,transparent)}
+.meter .ideal{position:absolute;top:0;bottom:0;left:44.4%;width:16.7%;background:color-mix(in srgb,var(--good) 40%,transparent)}
+.meter .needle{position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;background:var(--ink);border-radius:2px;left:0}
+.meterlab{display:flex;justify-content:space-between;font:500 10.5px var(--f-mono);color:var(--muted);margin-top:3px}
+.prog{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.prog>div{height:100%;width:0;background:var(--accent)}
+.flash{min-height:22px;font:500 13px var(--f-mono);color:var(--muted)}
+.res{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;font-size:13.5px}
+.res b{font-family:var(--f-mono);font-weight:500}
+.letter{font:700 64px/1 var(--f-display);color:var(--accent)}
+@media (prefers-reduced-motion: reduce){.btn:active{transform:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>2x12 Gear Lab</h1>
+    <p class="lede">Watch where the chain sits for every gear on a 2x12 road drivetrain, see why cross-chaining is a problem, then ride a short course and get scored on cadence and chain line.</p>
+  </header>
+
+  <div class="strip">
+    <label class="f" for="selCrank">Crankset<select id="selCrank"></select></label>
+    <label class="f" for="selCass">Cassette<select id="selCass"></select></label>
+    <label class="f" for="selTire">Tire<select id="selTire"></select></label>
+    <p class="note">Defaults match a Shimano 105 12-speed setup. Check the tooth counts stamped on your own rings and cassette.</p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabLearn" aria-selected="true" data-tab="learn">Learn</button>
+    <button class="tab" role="tab" id="tabRide" aria-selected="false" data-tab="ride">Ride</button>
+  </div>
+
+  <section id="learn">
+    <div class="grid2">
+      <div class="card">
+        <h2>Chain line, seen from above</h2>
+        <svg id="top" viewBox="0 0 340 330" role="img" aria-label="Top view of the chain running from the chainrings to the cassette"></svg>
+        <p class="cap">Chainrings on top, cassette below. Sideways angles are exaggerated. Tap a cog to select it.</p>
+      </div>
+      <div class="card">
+        <h2>Side view, chain running</h2>
+        <svg id="side" viewBox="0 0 520 244" role="img" aria-label="Side view of chainring, chain and cog turning"></svg>
+        <div class="row">
+          <label for="cadSlide">Cadence <input type="range" id="cadSlide" min="40" max="130" value="85"><span id="cadOut">85 rpm</span></label>
+          <button class="btn" id="playBtn" aria-pressed="true" style="min-height:38px">Pause</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card readout">
+      <div class="gearbig" id="gearBig">50×30<small id="gearSub">cog 3 of 12</small></div>
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div class="stats" id="stats"></div>
+        <div class="banner" id="banner"></div>
+        <div class="foot" id="dshift" style="max-width:none"></div>
+      </div>
+    </div>
+
+    <div class="controls" id="learnCtl"></div>
+
+    <div class="card">
+      <h2>All 24 gears on one scale</h2>
+      <div class="scroll"><svg id="ladder" viewBox="0 0 640 150" role="img" aria-label="Every gear combination placed by gear ratio"></svg></div>
+      <p class="cap">Dots that line up vertically are nearly the same gear on different rings. That is why you can almost always avoid the red ones. Tap a dot to select it.</p>
+    </div>
+
+    <div class="card">
+      <h2>Habits that protect your drivetrain</h2>
+      <ul class="rules" id="rules"></ul>
+    </div>
+    <p class="foot">Chain-line zones use approximate 12-speed road geometry (43.5 mm chainline, 3 mm cog spacing, 410 mm chainstay). Modern drivetrains tolerate more angle than older ones, so treat amber as "okay for a while" and red as "move on".</p>
+  </section>
+
+  <section id="ride" hidden>
+    <div class="card stage">
+      <canvas id="cv" aria-label="Scrolling course with rider"></canvas>
+      <div class="overlay" id="ovl"></div>
+    </div>
+    <div class="hud">
+      <div class="stat"><span>Cadence</span><b id="hCad">0</b><i>rpm</i></div>
+      <div class="stat"><span>Speed</span><b id="hSpd">0</b><i>km/h</i></div>
+      <div class="stat"><span>Gear</span><b id="hGear">50×17</b></div>
+      <div class="stat"><span>Grade</span><b id="hGrade">0%</b></div>
+      <div class="stat"><span>Score</span><b id="hScore">0</b></div>
+    </div>
+    <div>
+      <div class="meter" id="meter"><div class="ok"></div><div class="ideal"></div><div class="needle" id="needle"></div></div>
+      <div class="meterlab"><span>40</span><span>70</span><span>80–95 rpm target</span><span>105</span><span>130</span></div>
+    </div>
+    <div class="prog"><div id="prog"></div></div>
+    <div class="banner" id="coach"></div>
+    <div class="flash" id="flash" aria-live="polite"></div>
+    <div class="controls" id="rideCtl"></div>
+    <div class="row" style="margin-top:0"><label><input type="checkbox" id="coachOn" checked> Coach hints</label><button class="btn" id="restartBtn" style="min-height:38px">Restart course</button></div>
+  </section>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s);};
+var CASS={'11-34':[11,12,13,14,15,17,19,21,24,27,30,34],'11-30':[11,12,13,14,15,16,17,18,20,22,25,30]};
+var CRANKS={'50/34':[34,50],'52/36':[36,52]};
+var TIRES={'700x25c':2105,'700x28c':2136,'700x32c':2155};
+var cfg={crank:'50/34',cass:'11-34',tire:'700x28c'};
+try{var saved=JSON.parse(localStorage.getItem('gearlab-cfg')||'null');
+  if(saved){if(CRANKS[saved.crank])cfg.crank=saved.crank;if(CASS[saved.cass])cfg.cass=saved.cass;if(TIRES[saved.tire])cfg.tire=saved.tire;}}catch(e){}
+
+var rings=function(){return CRANKS[cfg.crank];};
+var cogs=function(){return CASS[cfg.cass];};
+var circ=function(){return TIRES[cfg.tire]/1000;};
+var RING_X=[39.5,47.5],STAY=410;
+var COG_X=function(j){return 60-3*j;};
+var offs=function(r,j){return Math.abs(RING_X[r]-COG_X(j));};
+var zone=function(r,j){var o=offs(r,j);return o<=12.6?'good':o<=15.5?'warn':'bad';};
+var ang=function(r,j){return Math.atan(offs(r,j)/STAY)*180/Math.PI;};
+var ratio=function(r,j){return rings()[r]/cogs()[j];};
+var dev=function(r,j){return ratio(r,j)*circ();};
+var kmh=function(r,j,cad){return dev(r,j)*cad*0.06;};
+var NS='http://www.w3.org/2000/svg';
+
+/* ---------- Learn state ---------- */
+var L={r:1,j:10};
+var learnCad=85,playing=!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+var crankA=0,sideRefs=null,topChain=null;
+
+function cogNumber(j){return 12-j;}
+
+function suggest(r,j){
+  var o=1-r,rs=rings(),cs=cogs(),target=ratio(r,j),best=-1,be=1e9;
+  for(var k=0;k<12;k++){if(zone(o,k)==='bad')continue;var e=Math.abs(ratio(o,k)-target);if(e<be){be=e;best=k;}}
+  if(best<0)return null;
+  var n=Math.abs(best-j);
+  return {ring:rs[o],cog:cs[best],n:n,dir:best>j?'bigger':'smaller',ratio:ratio(o,best)};
+}
+
+function renderTop(){
+  var rs=rings(),cs=cogs(),r=L.r,j=L.j,z=zone(r,j);
+  var X=function(mm){return 14+(mm-24)*7.8;};
+  var s='<g class="zone-'+z+'">';
+  s+='<line x1="14" y1="20" x2="14" y2="326" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="4 4"/>';
+  s+='<text x="20" y="16" font-size="9.5" fill="var(--muted)">frame centre</text>';
+  for(var k=0;k<2;k++){
+    var x=X(RING_X[k]),sel=k===r;
+    s+='<rect x="'+(x-2.5)+'" y="36" width="5" height="46" rx="1" fill="'+(sel?'var(--c)':'var(--steel)')+'" opacity="'+(sel?1:.45)+'"/>';
+    s+='<text x="'+x+'" y="28" text-anchor="middle" font-size="11" font-weight="'+(sel?600:400)+'" fill="'+(sel?'var(--ink)':'var(--muted)')+'">'+rs[k]+'T</text>';
+    s+='<rect data-r="'+k+'" x="'+(x-16)+'" y="24" width="32" height="60" fill="transparent" style="cursor:pointer"/>';
+  }
+  var x1=X(RING_X[r]),x2=X(COG_X(j));
+  s+='<line id="topChain" x1="'+x1+'" y1="82" x2="'+x2+'" y2="250" stroke="var(--c)" stroke-width="3.4" stroke-dasharray="6 2.4" stroke-linecap="round"/>';
+  for(var i=0;i<12;i++){
+    var cx=X(COG_X(i)),h=cs[i]*1.3,zz=zone(r,i),sel2=i===j;
+    s+='<rect x="'+(cx-3.6)+'" y="250" width="7.2" height="'+h+'" rx="1" class="zone-'+zz+'" fill="var(--c)" opacity="'+(sel2?1:.5)+'"'+(sel2?' stroke="var(--ink)" stroke-width="1.6"':'')+'/>';
+    s+='<text x="'+cx+'" y="314" text-anchor="middle" font-size="10" font-weight="'+(sel2?600:400)+'" fill="'+(sel2?'var(--ink)':'var(--muted)')+'">'+cs[i]+'</text>';
+    s+='<rect data-j="'+i+'" x="'+(cx-11)+'" y="244" width="22" height="82" fill="transparent" style="cursor:pointer"/>';
+  }
+  s+='<text x="20" y="160" font-size="12" fill="var(--ink)" font-weight="600">'+ang(r,j).toFixed(1)+'° angle</text>';
+  s+='<text x="20" y="175" font-size="10.5" fill="var(--muted)">'+offs(r,j).toFixed(1)+' mm sideways</text>';
+  s+='</g>';
+  $('#top').innerHTML=s;
+  topChain=$('#topChain');
+}
+
+function buildSide(){
+  var rs=rings(),cs=cogs(),r=L.r,j=L.j,z=zone(r,j);
+  var p=7.2,tau=Math.PI*2,rr=rs[r]*p/tau,rc=cs[j]*p/tau,cy=122,Rx=392,Cx=Rx-232;
+  var nx=(rc-rr)/(Rx-Cx),ny=Math.sqrt(1-nx*nx);
+  var P=function(cx,rad,sy){return [cx+rad*nx,cy+sy*rad*ny];};
+  var a=P(Cx,rc,-1),b=P(Rx,rr,-1),c=P(Rx,rr,1),d=P(Cx,rc,1);
+  var f1=nx<0?1:0,f2=nx<0?0:1;
+  var path='M'+a[0]+' '+a[1]+'L'+b[0]+' '+b[1]+'A'+rr+' '+rr+' 0 '+f1+' 1 '+c[0]+' '+c[1]+'L'+d[0]+' '+d[1]+'A'+rc+' '+rc+' 0 '+f2+' 1 '+a[0]+' '+a[1]+'Z';
+  var s='<g class="zone-'+z+'">';
+  // frame stub
+  s+='<line x1="'+Cx+'" y1="'+cy+'" x2="'+Rx+'" y2="'+cy+'" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="3 5"/>';
+  // cog
+  s+='<g id="gCog"><circle cx="'+Cx+'" cy="'+cy+'" r="'+rc+'" fill="color-mix(in srgb,var(--steel) 10%,var(--panel))" stroke="var(--steel)" stroke-width="1"/>';
+  s+='<circle cx="'+Cx+'" cy="'+cy+'" r="'+rc+'" fill="none" stroke="var(--steel)" stroke-width="5" stroke-dasharray="'+(p*.55)+' '+(p*.45)+'"/>';
+  for(var k=0;k<3;k++){var t=k*Math.PI*2/3;s+='<line x1="'+Cx+'" y1="'+cy+'" x2="'+(Cx+Math.cos(t)*rc*.8)+'" y2="'+(cy+Math.sin(t)*rc*.8)+'" stroke="var(--steel)" stroke-width="2.4" stroke-linecap="round"/>';}
+  s+='</g>';
+  // ring
+  s+='<g id="gRing"><circle cx="'+Rx+'" cy="'+cy+'" r="'+rr+'" fill="color-mix(in srgb,var(--steel) 10%,var(--panel))" stroke="var(--steel)" stroke-width="1"/>';
+  s+='<circle cx="'+Rx+'" cy="'+cy+'" r="'+rr+'" fill="none" stroke="var(--steel)" stroke-width="5" stroke-dasharray="'+(p*.55)+' '+(p*.45)+'"/>';
+  for(var m=0;m<5;m++){var u=m*Math.PI*2/5;s+='<line x1="'+Rx+'" y1="'+cy+'" x2="'+(Rx+Math.cos(u)*rr*.82)+'" y2="'+(cy+Math.sin(u)*rr*.82)+'" stroke="var(--steel)" stroke-width="3.4" stroke-linecap="round"/>';}
+  s+='<line x1="'+Rx+'" y1="'+cy+'" x2="'+(Rx+96)+'" y2="'+cy+'" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>';
+  s+='<rect x="'+(Rx+86)+'" y="'+(cy-6)+'" width="26" height="12" rx="3" fill="var(--ink)"/>';
+  s+='<circle cx="'+Rx+'" cy="'+cy+'" r="5" fill="var(--ink)"/></g>';
+  // chain
+  s+='<path id="belt" d="'+path+'" fill="none" stroke="var(--c)" stroke-width="4.6" stroke-dasharray="5 2.2" stroke-linejoin="round"/>';
+  s+='<text x="'+Cx+'" y="'+(cy+rc+22)+'" text-anchor="middle" font-size="12" fill="var(--ink)" font-weight="600">'+cs[j]+'T</text>';
+  s+='<text x="'+Rx+'" y="'+(cy+Math.max(rr,96)+20)+'" text-anchor="middle" font-size="12" fill="var(--ink)" font-weight="600">'+rs[r]+'T</text>';
+  s+='</g>';
+  $('#side').innerHTML=s;
+  sideRefs={ring:$('#gRing'),cog:$('#gCog'),belt:$('#belt'),Rx:Rx,Cx:Cx,cy:cy,rr:rr,p:p};
+  applyRot();
+}
+function applyRot(){
+  if(!sideRefs)return;
+  var q=sideRefs,rs=rings(),cs=cogs();
+  q.ring.setAttribute('transform','rotate('+crankA+' '+q.Rx+' '+q.cy+')');
+  q.cog.setAttribute('transform','rotate('+(crankA*rs[L.r]/cs[L.j])+' '+q.Cx+' '+q.cy+')');
+  var off=-((crankA*Math.PI/180)*q.rr)%q.p;
+  q.belt.setAttribute('stroke-dashoffset',off);
+  if(topChain)topChain.setAttribute('stroke-dashoffset',-(crankA*Math.PI/180*q.rr)%8.4);
+}
+
+function renderReadout(){
+  var rs=rings(),cs=cogs(),r=L.r,j=L.j,z=zone(r,j);
+  var big=$('#gearBig');big.className='gearbig zone-'+z;
+  big.firstChild.nodeValue=rs[r]+'×'+cs[j];
+  $('#gearSub').textContent='cog '+cogNumber(j)+' of 12, counted from the biggest';
+  var st=[['Ratio',ratio(r,j).toFixed(2),''],['Per pedal turn',dev(r,j).toFixed(1),'m'],['At '+learnCad+' rpm',kmh(r,j,learnCad).toFixed(1),'km/h'],['Chain angle',ang(r,j).toFixed(1),'°']];
+  $('#stats').innerHTML=st.map(function(x){return '<div class="stat"><span>'+x[0]+'</span><b>'+x[1]+'</b><i>'+x[2]+'</i></div>';}).join('');
+  var sg=suggest(r,j),bn=$('#banner');bn.className='banner zone-'+z;
+  var t;
+  if(z==='good')t='<b>Good chain line.</b> This gear is fine to ride for as long as you like.';
+  else if(z==='warn')t='<b>Borderline.</b> The chain runs at a visible angle. Fine for a short stretch, not for a whole climb.';
+  else t='<b>Cross-chained.</b> Extra wear, more noise, and a higher chance of dropping the chain.';
+  bn.innerHTML=t;
+  $('#dshift').innerHTML=sg?('Same gear on the '+sg.ring+'T ring: use the '+sg.cog+'T cog. After the front shift, move the rear <b>'+sg.n+' cog'+(sg.n===1?'':'s')+' '+sg.dir+'</b> (ratio '+sg.ratio.toFixed(2)+').'):'';
+}
+
+function ladderSvg(){
+  var rs=rings(),cs=cogs();
+  var W=640,x0=54,x1=622,lo=Math.log(0.9),hi=Math.log(rs[1]/cs[0]*1.06);
+  var X=function(v){return x0+(Math.log(v)-lo)/(hi-lo)*(x1-x0);};
+  var rowY=[102,46];
+  var s='';
+  var cur=ratio(L.r,L.j);
+  s+='<line x1="'+X(cur)+'" y1="22" x2="'+X(cur)+'" y2="124" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>';
+  for(var r=0;r<2;r++){
+    var y=rowY[r];
+    s+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="var(--line)"/>';
+    s+='<text x="6" y="'+(y+4)+'" font-size="12" font-weight="600" fill="var(--ink)">'+rs[r]+'T</text>';
+    for(var j=0;j<12;j++){
+      var rt=ratio(r,j),zz=zone(r,j),sel=(r===L.r&&j===L.j);
+      s+='<g class="zone-'+zz+'"><circle data-r="'+r+'" data-j="'+j+'" cx="'+X(rt)+'" cy="'+y+'" r="'+(sel?9:7)+'" fill="'+(sel?'var(--c)':'color-mix(in srgb,var(--c) 28%,var(--panel))')+'" stroke="'+(sel?'var(--ink)':'var(--c)')+'" stroke-width="'+(sel?2:1.6)+'" style="cursor:pointer"><title>'+rs[r]+'×'+cs[j]+' · ratio '+rt.toFixed(2)+'</title></circle></g>';
+      s+='<text x="'+X(rt)+'" y="'+(y+(r===1?-14:21))+'" text-anchor="middle" font-size="9.5" fill="var(--muted)">'+cs[j]+'</text>';
+    }
+  }
+  [1,1.5,2,3,4,5].forEach(function(v){if(v>Math.exp(hi))return;s+='<line x1="'+X(v)+'" y1="130" x2="'+X(v)+'" y2="135" stroke="var(--muted)"/><text x="'+X(v)+'" y="147" text-anchor="middle" font-size="10" fill="var(--muted)">'+v+'</text>';});
+  s+='<text x="'+x1+'" y="12" text-anchor="end" font-size="10" fill="var(--muted)">harder →</text>';
+  $('#ladder').innerHTML=s;
+}
+
+function zoneList(r){
+  var cs=cogs(),bad=[],warn=[];
+  for(var j=0;j<12;j++){var z=zone(r,j);if(z==='bad')bad.push(cs[j]);else if(z==='warn')warn.push(cs[j]);}
+  var t=bad.length?('avoid the '+bad.join(' and ')):'nothing is off limits';
+  if(warn.length)t+=', be careful with the '+warn.join(' and ');
+  return t;
+}
+function renderRules(){
+  var rs=rings(),cs=cogs();
+  var ex=suggest(0,5);
+  var items=[
+    ['Stay near the middle','On the '+rs[0]+'T ring '+zoneList(0)+'. On the '+rs[1]+'T ring '+zoneList(1)+'.'],
+    ['Pick a ring, then stay on it','Use the small ring for climbs and easy riding, the big ring for flats and descents. Most of your shifting should happen at the rear.'],
+    ['Shift before the road changes','Change gear as the climb begins, not halfway up it. Chains shift cleanly under light load and badly under a hard push.'],
+    ['Front shift lightly','Ease the pressure for a moment, shift the front, then double-shift. '+(ex?('From '+rs[0]+'×'+cs[5]+', going to the '+rs[1]+'T ring means moving the rear '+ex.n+' cogs '+ex.dir+' ('+ex.cog+'T) to land on the same gear.'):'')],
+    ['Spin, do not grind','Aim for 80 to 95 rpm on the road. If cadence falls under 70, shift easier. If it passes 105, shift harder.'],
+    ['Keep the pedals turning','The chain only moves between cogs while it is moving. Soft-pedal through the shift and do not stamp on the pedals.']
+  ];
+  $('#rules').innerHTML=items.map(function(i){return '<li><b>'+i[0]+'</b>'+i[1]+'</li>';}).join('');
+}
+
+function renderLearn(){renderTop();buildSide();renderReadout();ladderSvg();}
+
+/* ---------- Controls markup ---------- */
+function ctlHtml(ctx){
+  return '<div class="ctlgroup"><h3>Rear shifter</h3><div>'+
+    '<button class="btn" data-ctx="'+ctx+'" data-act="rear-easy">Easier <kbd>←</kbd></button>'+
+    '<button class="btn" data-ctx="'+ctx+'" data-act="rear-hard">Harder <kbd>→</kbd></button></div></div>'+
+    '<div class="ctlgroup"><h3>Front shifter</h3><div>'+
+    '<button class="btn" data-ctx="'+ctx+'" data-act="front-small">Small ring <kbd>↓</kbd></button>'+
+    '<button class="btn" data-ctx="'+ctx+'" data-act="front-big">Big ring <kbd>↑</kbd></button></div></div>';
+}
+$('#learnCtl').innerHTML=ctlHtml('learn');
+$('#rideCtl').innerHTML=ctlHtml('ride');
+
+function act(ctx,a){
+  if(ctx==='ride'){rideAct(a);return;}
+  if(a==='rear-easy')L.j=Math.min(11,L.j+1);
+  else if(a==='rear-hard')L.j=Math.max(0,L.j-1);
+  else if(a==='front-big')L.r=1;
+  else if(a==='front-small')L.r=0;
+  renderLearn();
+}
+document.addEventListener('click',function(e){
+  var t=e.target.closest?e.target.closest('[data-act]'):null;
+  if(t){act(t.getAttribute('data-ctx'),t.getAttribute('data-act'));return;}
+  var sv=e.target.closest?e.target.closest('#top,#ladder'):null;
+  if(sv&&e.target.getAttribute){
+    var rr=e.target.getAttribute('data-r'),jj=e.target.getAttribute('data-j');
+    if(rr!==null)L.r=+rr;
+    if(jj!==null)L.j=+jj;
+    if(rr!==null||jj!==null)renderLearn();
+  }
+});
+document.addEventListener('keydown',function(e){
+  var tg=e.target&&e.target.tagName;
+  if(tg==='SELECT'||tg==='INPUT')return;
+  var map={ArrowLeft:'rear-easy',ArrowRight:'rear-hard',ArrowUp:'front-big',ArrowDown:'front-small'};
+  var a=map[e.key];if(!a)return;
+  e.preventDefault();
+  act(tab==='ride'?'ride':'learn',a);
+});
+
+/* ---------- Tabs & setup ---------- */
+var tab='learn';
+function setTab(t){
+  tab=t;
+  $('#learn').hidden=t!=='learn';$('#ride').hidden=t!=='ride';
+  $('#tabLearn').setAttribute('aria-selected',t==='learn');
+  $('#tabRide').setAttribute('aria-selected',t==='ride');
+}
+document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){setTab(b.getAttribute('data-tab'));});});
+function fillSel(id,obj,val,fmt){
+  var el=$(id);el.innerHTML=Object.keys(obj).map(function(k){return '<option value="'+k+'"'+(k===val?' selected':'')+'>'+(fmt?fmt(k):k)+'</option>';}).join('');
+}
+fillSel('#selCrank',CRANKS,cfg.crank,function(k){return k.replace('/',' / ')+' T';});
+fillSel('#selCass',CASS,cfg.cass,function(k){return k.replace('-',' to ')+' T';});
+fillSel('#selTire',TIRES,cfg.tire);
+function cfgChanged(){
+  try{localStorage.setItem('gearlab-cfg',JSON.stringify(cfg));}catch(e){}
+  bestCache={};resetRide();renderRules();renderLearn();
+}
+$('#selCrank').addEventListener('change',function(e){cfg.crank=e.target.value;cfgChanged();});
+$('#selCass').addEventListener('change',function(e){cfg.cass=e.target.value;cfgChanged();});
+$('#selTire').addEventListener('change',function(e){cfg.tire=e.target.value;cfgChanged();});
+
+$('#cadSlide').addEventListener('input',function(e){learnCad=+e.target.value;$('#cadOut').textContent=learnCad+' rpm';renderReadout();});
+var playBtn=$('#playBtn');
+function syncPlay(){playBtn.textContent=playing?'Pause':'Play';playBtn.setAttribute('aria-pressed',playing);}
+playBtn.addEventListener('click',function(){playing=!playing;syncPlay();});
+syncPlay();
+
+/* ---------- Ride: course & physics ---------- */
+var COURSE=[[300,0],[350,3],[450,7],[200,0],[350,-5],[350,1],[250,10],[300,-4],[350,0],[400,5]];
+var TOT=0,SEG=[];
+(function(){var e=0;COURSE.forEach(function(c){SEG.push({x0:TOT,x1:TOT+c[0],g:c[1]/100,e0:e});TOT+=c[0];e+=c[0]*c[1]/100;});})();
+function segIdx(x){for(var i=0;i<SEG.length;i++)if(x<SEG[i].x1)return i;return SEG.length-1;}
+function segAt(x){return SEG[segIdx(x)];}
+function elev(x){var s=segAt(x);return s.e0+(Math.min(x,s.x1)-s.x0)*s.g;}
+var M=82,G=9.81,CRR=0.005,CDA=0.34,RHO=1.2,P0=240,TS=5;
+function pf(c){if(c>=75&&c<=100)return 1;if(c<75)return Math.max(.3,1-(75-c)*.02);return Math.max(0,1-(c-100)*.04);}
+function stepV(v,g,r,j,h,pm){
+  var d=dev(r,j),cad=v/d*60,z=zone(r,j);
+  var P=P0*pf(cad)*(z==='bad'?.93:z==='warn'?.97:1)*(pm||1);
+  var th=Math.atan(g),F=P/Math.max(v,2);
+  var Rr=M*G*(Math.sin(th)+CRR*Math.cos(th))+.5*RHO*CDA*v*v;
+  return Math.min(24,Math.max(1.2,v+(F-Rr)/M*h));
+}
+var bestCache={};
+function bestFor(g){
+  var k=g.toFixed(3);if(bestCache[k])return bestCache[k];
+  var b=null;
+  for(var r=0;r<2;r++)for(var j=0;j<12;j++){
+    var z=zone(r,j);if(z==='bad')continue;
+    var v=6;for(var i=0;i<500;i++)v=stepV(v,g,r,j,.1);
+    var c=v/dev(r,j)*60,err=Math.abs(c-87.5)+(z==='warn'?4:0);
+    if(!b||err<b.err)b={r:r,j:j,err:err,cad:c};
+  }
+  bestCache[k]=b;return b;
+}
+
+var R={};
+function resetRide(){
+  R={run:false,done:false,x:0,v:8,r:1,j:5,pend:-1,pendT:0,score:0,tIdeal:0,tOk:0,tCross:0,tTot:0,fHeavy:0,shifts:0,wheel:0,crank:0,tilt:0,msg:'',msgT:0,cad:0};
+  showOverlay('intro');updateHud();
+}
+function say(m){R.msg=m;R.msgT=3;}
+function rideAct(a){
+  if(!R.run)return;
+  if(a==='rear-easy'&&R.j<11){R.j++;R.shifts++;}
+  else if(a==='rear-hard'&&R.j>0){R.j--;R.shifts++;}
+  else if(a==='front-big'||a==='front-small'){
+    var t=a==='front-big'?1:0;
+    if(R.pend>=0||t===R.r)return;
+    var heavy=segAt(R.x).g>=.06||R.cad<60;
+    R.pend=t;R.pendT=.5;R.shifts++;
+    if(heavy){R.fHeavy++;R.score-=40;say('Front shift under load: −40. Ease off, or shift before the climb starts.');}
+  }
+}
+function startRide(){resetRide();R.run=true;showOverlay('');}
+function showOverlay(kind){
+  var o=$('#ovl');
+  if(!kind){o.hidden=true;return;}
+  o.hidden=false;
+  if(kind==='intro'){
+    o.innerHTML='<div class="box"><h3>Ride the course</h3><p>'+(TOT/1000).toFixed(1)+' km, ten sections from flat to 10% grade. Keep cadence in the green band, 80 to 95 rpm, and stay out of red chain-line gears.</p><p>Shift before the road changes. The coach strip shows what is coming.</p><button class="btn primary" id="goBtn">Start ride</button></div>';
+    $('#goBtn').addEventListener('click',startRide);
+  }else{
+    var q=(R.tIdeal+.4*R.tOk-.5*R.tCross)/Math.max(1,R.tTot),L2=q>=.7?'A':q>=.5?'B':q>=.3?'C':'D';
+    var best=0;try{best=+localStorage.getItem('gearlab-best')||0;if(R.score>best){best=R.score;localStorage.setItem('gearlab-best',String(best));}}catch(e){}
+    o.innerHTML='<div class="box"><h3>Finished</h3><div style="display:flex;gap:16px;align-items:center"><div class="letter">'+L2+'</div><div><div class="stat"><span>Score</span><b>'+Math.round(R.score)+'</b></div><div class="foot">Best on this device: '+Math.round(best)+'</div></div></div>'+
+      '<div class="res"><span>In target band</span><b>'+Math.round(R.tIdeal/R.tTot*100)+'%</b><span>Acceptable cadence</span><b>'+Math.round((R.tIdeal+R.tOk)/R.tTot*100)+'%</b><span>Cross-chained</span><b>'+Math.round(R.tCross/R.tTot*100)+'%</b><span>Front shifts under load</span><b>'+R.fHeavy+'</b><span>Total shifts</span><b>'+R.shifts+'</b></div>'+
+      '<button class="btn primary" id="goBtn">Ride again</button></div>';
+    $('#goBtn').addEventListener('click',startRide);
+  }
+}
+$('#restartBtn').addEventListener('click',resetRide);
+
+function sim(dt){
+  var hs=dt*TS,n=Math.max(1,Math.ceil(hs/.05)),h=hs/n,pm=R.pend>=0?.5:1;
+  for(var i=0;i<n;i++){R.v=stepV(R.v,segAt(R.x).g,R.r,R.j,h,pm);R.x+=R.v*h;}
+  if(R.pend>=0){R.pendT-=dt;if(R.pendT<=0){R.r=R.pend;R.pend=-1;}}
+  var d=dev(R.r,R.j);R.cad=R.v/d*60;
+  R.wheel+=R.v*dt/.34;R.crank+=R.cad*6*dt*Math.PI/180;
+  var z=zone(R.r,R.j);
+  R.tTot+=dt;
+  if(R.cad>=80&&R.cad<=95){R.tIdeal+=dt;R.score+=10*dt;}
+  else if(R.cad>=70&&R.cad<=105){R.tOk+=dt;R.score+=4*dt;}
+  if(z==='bad'){R.tCross+=dt;R.score-=6*dt;}else if(z==='warn')R.score-=2*dt;
+  if(R.score<0)R.score=0;
+  if(R.msgT>0){R.msgT-=dt;if(R.msgT<=0)R.msg='';}
+  if(R.x>=TOT){R.x=TOT;R.run=false;R.done=true;showOverlay('done');}
+}
+
+function fmtG(g){var p=Math.round(g*100);return (p>0?'+':'')+p+'%';}
+function updateHud(){
+  var rs=rings(),cs=cogs();
+  var cad=R.cad||0,seg=segAt(R.x||0);
+  $('#hCad').textContent=Math.round(cad);
+  $('#hSpd').textContent=(((R.v||0)*3.6)).toFixed(0);
+  var hg=$('#hGear');hg.textContent=rs[R.r]+'×'+cs[R.j]+(R.pend>=0?' …':'');hg.parentNode.className='stat zone-'+zone(R.r,R.j);hg.style.color='var(--c)';
+  $('#hGrade').textContent=fmtG(seg.g);
+  $('#hScore').textContent=Math.round(R.score||0);
+  $('#needle').style.left=Math.max(0,Math.min(100,(cad-40)/90*100))+'%';
+  $('#prog').style.width=((R.x||0)/TOT*100)+'%';
+  var cb=$('#coach'),on=$('#coachOn').checked;
+  if(!on){cb.hidden=true;}
+  else{
+    cb.hidden=false;
+    var bn=bestFor(seg.g),i=segIdx(R.x||0),nx=SEG[i+1],dist=seg.x1-(R.x||0),txt;
+    var gs=function(b){return rs[b.r]+'×'+cs[b.j];};
+    if(!R.run&&!R.done)txt='<b>Coach</b> Press start. Your first section is flat; the best gear is about '+gs(bn)+'.';
+    else if(nx&&dist<260){var nb=bestFor(nx.g);txt='<b>In '+Math.round(dist/10)*10+' m: '+fmtG(nx.g)+'.</b> Aim for '+gs(nb)+' once you get there. Now on '+fmtG(seg.g)+', best is '+gs(bn)+'.';}
+    else txt='<b>'+fmtG(seg.g)+' section.</b> Best gear here is about '+gs(bn)+' ('+Math.round(bn.cad)+' rpm).';
+    cb.className='banner zone-'+(R.run&&zone(R.r,R.j)==='bad'?'bad':'good');
+    cb.innerHTML=txt;
+  }
+  var z=zone(R.r,R.j);
+  $('#flash').textContent=R.msg||(R.run&&z==='bad'?'Cross-chained: shift the other ring and double-shift the rear.':'');
+}
+
+/* ---------- Ride drawing ---------- */
+function bike(c,x,y,a,wr,cr,ink,acc){
+  c.save();c.translate(x,y);c.rotate(-a);c.lineCap='round';c.lineJoin='round';
+  c.strokeStyle=ink;c.fillStyle=ink;
+  var rw=[-21,-11],fw=[21,-11],bb=[-1,-12],stp=[-8,-31],ht=[14,-32];
+  var ln=function(p,q){c.beginPath();c.moveTo(p[0],p[1]);c.lineTo(q[0],q[1]);c.stroke();};
+  [rw,fw].forEach(function(w){
+    c.lineWidth=2;c.beginPath();c.arc(w[0],w[1],11,0,7);c.stroke();
+    c.lineWidth=.8;
+    for(var k=0;k<3;k++){var t=wr+k*Math.PI/3;c.beginPath();c.moveTo(w[0]+Math.cos(t)*11,w[1]+Math.sin(t)*11);c.lineTo(w[0]-Math.cos(t)*11,w[1]-Math.sin(t)*11);c.stroke();}
+  });
+  c.lineWidth=2;
+  ln(rw,bb);ln(bb,stp);ln(stp,ht);ln(ht,fw);ln(bb,ht);ln(stp,rw);
+  var hip=[-9,-36],sh=[5,-49],hd=[10,-55],hn=[14,-33];
+  var p1=[bb[0]+9*Math.cos(cr),bb[1]+9*Math.sin(cr)],p2=[bb[0]-9*Math.cos(cr),bb[1]-9*Math.sin(cr)];
+  c.strokeStyle=acc;c.lineWidth=3.4;
+  [p1,p2].forEach(function(p){var kn=[(hip[0]+p[0])/2+4,(hip[1]+p[1])/2-1];c.beginPath();c.moveTo(hip[0],hip[1]);c.lineTo(kn[0],kn[1]);c.lineTo(p[0],p[1]);c.stroke();});
+  c.lineWidth=4.2;ln(hip,sh);
+  c.lineWidth=2.6;ln(sh,hn);
+  c.fillStyle=acc;c.beginPath();c.arc(hd[0],hd[1],4.2,0,7);c.fill();
+  c.restore();
+}
+function draw(){
+  if($('#ride').hidden)return;
+  var cv=$('#cv'),W=cv.clientWidth,H=cv.clientHeight;if(!W)return;
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  var c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+  var cs=getComputedStyle(document.documentElement),V=function(n){return cs.getPropertyValue(n).trim();};
+  var sky=V('--sky'),ground=V('--ground'),ink=V('--ink'),muted=V('--muted'),good=V('--good'),warn=V('--warn'),bad=V('--bad'),steel=V('--steel'),accent=V('--accent');
+  c.fillStyle=sky;c.fillRect(0,0,W,H);
+  var ppm=W/560,ex=2.2,sx0=W*.27,y0=H*.62,er=elev(R.x||0),xr=R.x||0;
+  var Y=function(wx){return y0-(elev(Math.max(0,Math.min(TOT,wx)))-er)*ppm*ex;};
+  c.beginPath();c.moveTo(0,H);
+  for(var sx=0;sx<=W+3;sx+=3)c.lineTo(sx,Y(xr+(sx-sx0)/ppm));
+  c.lineTo(W,H);c.closePath();c.fillStyle=ground;c.fill();
+  c.lineWidth=4;c.lineCap='butt';
+  for(var s2=0;s2<W;s2+=3){
+    var wx=xr+(s2-sx0)/ppm;if(wx<0||wx>TOT)continue;
+    var g=segAt(wx).g;
+    c.strokeStyle=g>.06?bad:g>.005?warn:g<-.005?steel:muted;
+    c.beginPath();c.moveTo(s2,Y(wx));c.lineTo(s2+3.2,Y(wx+3.2/ppm));c.stroke();
+  }
+  c.font='600 12px IBM Plex Mono, monospace';c.textAlign='center';
+  SEG.forEach(function(sg,i){
+    var sx3=sx0+(sg.x0-xr)*ppm;
+    if(sx3<10||sx3>W-24)return;
+    var col=sg.g>.06?bad:sg.g>.005?warn:sg.g<-.005?steel:muted,yy=Y(sg.x0);
+    c.strokeStyle=col;c.lineWidth=1.5;c.beginPath();c.moveTo(sx3,yy-4);c.lineTo(sx3,yy-26);c.stroke();
+    c.fillStyle=col;c.fillText(fmtG(sg.g),sx3,yy-31);
+  });
+  var fx=sx0+(TOT-xr)*ppm;
+  if(fx<W){var fy=Y(TOT);c.strokeStyle=ink;c.lineWidth=2;c.beginPath();c.moveTo(fx,fy);c.lineTo(fx,fy-44);c.stroke();c.fillStyle=ink;c.fillRect(fx,fy-44,16,10);c.fillStyle=sky;c.fillRect(fx,fy-44,8,5);c.fillRect(fx+8,fy-39,8,5);}
+  var tg=Math.atan(segAt(xr).g*ex);R.tilt=(R.tilt||0)+(tg-(R.tilt||0))*.15;
+  bike(c,sx0,Y(xr),R.tilt,R.wheel||0,R.crank||0,ink,accent);
+}
+
+/* ---------- Main loop ---------- */
+var last=0;
+function tick(ts){
+  var dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+  if(!$('#learn').hidden&&playing){crankA=(crankA+learnCad*6*dt)%36000;applyRot();}
+  if(!$('#ride').hidden){if(R.run)sim(dt);updateHud();draw();}
+  requestAnimationFrame(tick);
+}
+$('#coachOn').addEventListener('change',updateHud);
+
+renderRules();renderLearn();resetRide();
+requestAnimationFrame(tick);
+})();
+</script>
+
+</body></html>
